@@ -1,0 +1,116 @@
+# Upgrade instruction for Example42 modules from 2.x (NextGen style) to 3.x (StdMod compliant)
+
+This is version 3.x of Example42 <%metadata.name %> module.
+It is based on [stdmod](https://github.com/stdmod) naming conventions for parameters names.
+
+If you are upgrading from an earlier version of this module ("NextGen", 2.x) note that many changes
+have taken place, the two versions are not compatible and your Puppet runs will probably fail with an "Invalid parameter" error.
+
+Don't despair, once you know what has changed, the fix shouldn't be a big pain.
+
+## FIRST MAJOR CHANGE: params_lookup function is removed.
+
+All the 2.x modules have, for each parameter, a params_lookup function which, if no value is explicitely declared, automatically looks for a value set in an external source, on this order:
+
+ - Hiera, if present, to the key $module_$parameter
+
+ - Hiera, if present, to the key $parameter
+
+ - Top scope variable $module_$parameter
+
+ - Top scope variable $module
+
+Note that if no variable is found in any of these places, on Puppet 3, it still works the default automatic lookup on an Hiera key called $module::$parameter.
+
+So, if you rely on any of the above params_lookup sources you should move the relevant parameters definitions. The suggestion is to use Hiera and follow the Puppet standard $module::$parameter naming convention, so that you are ready to manage, in with the same patterns 3.x modules.
+
+
+## SECOND MAJOR CHANGE: Most of the standard parameters have been removed or renamed
+
+3.x modules benefit of the same reusability options of the 2.x ones, but follow a different naming scheme, based on StdMod naming conventions which are a result of on field experience and discussion among community members.
+
+Some of the paramters have simply have changed names, other refer to features no more available or managed in a different way.
+
+Here is a list of the standard 2.x parameters and their 3.x alternatives.
+
+    2.x                 STATUS: 3.x (notes)
+
+    my_class            NOTCHANGED: my_class
+    source              RENAMED: config_file_source
+    source_dir          RENAMED: config_dir_source
+    source_dir_purge    RENAMED: config_dir_purge
+    template            RENAMED: config_file_template
+    content             RENAMED: config_file_content
+    service_autorestart RENAMED AND CHANGED: config_file_notify (from boolean to string)
+    options             RENAMED: config_file_options_hash
+    version             RENAMED: package_ensure
+    absent              RENAMED AND CHANGED: package_ensure (from boolen to string)
+    disable             RENAMED AND CHANGED: service_enable (boolean with opposite values)
+    disableboot         RENAMED AND CHANGED: service_ensure (boolean with opposite values)
+    monitor             RENAMED AND CHANGED: monitor_class (from boolean to string)
+    monitor_tool        DELETED AND CHANGED: Use monitor_options_hash to manage any monitor setting
+    monitor_target      DELETED AND CHANGED: Use monitor_options_hash to manage any monitor setting
+    puppi               DELETED AND CHANGED: use my_class = '<%= metadata.name %>::example42'
+    puppi_helper        DELETED
+    firewall            RENAMED AND CHANGED: monitor_class (from boolean to string)
+    firewall_tool       DELETED AND CHANGED: Use monitor_options_hash to manage any monitor setting
+    firewall_src        DELETED AND CHANGED: Use monitor_options_hash to manage any monitor setting
+    firewall_dst        DELETED AND CHANGED: Use monitor_options_hash to manage any monitor setting
+    debug               DELETED
+    audit_only          DELETED
+    package             RENAMED: package_name
+    service             RENAMED: service_name
+    service_status      NOT PRESENT: service_status is stmdod compliant but is not used by default in 3.x
+    process             DELETED
+    process_args        DELETED
+    process_user        DELETED
+    config_dir          RENAMED: config_dir_path
+    config_file         RENAMED: config_file_path
+    config_file_mode    NOT PRESENT: config_file_mode
+    config_file_owner   NOT PRESENT: config_file_owner
+    config_file_group   NOT PRESENT: config_file_group
+    config_file_init    RENAMED AND NOT PRESENT: init_config_file_path
+    pid_file            RENAMED AND NOT PRESENT: pid_file_path
+    data_dir            RENAMED AND NOT PRESENT: data_dir_path
+    log_dir             RENAMED AND NOT PRESENT: log_dir_paht
+    log_file            RENAMED AND NOT PRESENT: log_file_path
+    port                RENAMED AND CHANGED: tcp_port udp_port
+    protocol            RENAMED AND CHANGED: tcp_port udp_port
+
+### WARNING: Deprecated variables in templates
+
+This change in most of the names may also affect erb templates if they use variables derived from the deprecated parameters.
+Note that the expected output of the templates may change according to how variables are referenced and the Puppet version.
+If in a template is used the scope.lookupvar function the result for a missing variable is a blank char but compilation succeeds (and this might cause severe misconfigurations in your Puppet managed files)
+If the variable is referenced via @parameter, an error should be thrown.
+
+
+
+## THIRD CHANGE: Booleans are now enforced and no more sanitized
+
+Most of boolean parameters in 2.x modules are passed through the any2bool() function, which converts stings that resemble booleans to real booleans.
+3.x modules fail hard and fail early if a not real boolean is used.
+
+So the following examples are WRONG and now will fail:
+    monitor => "true",
+    monitor => 'true',
+    monitor => "yes",
+    monitor => "1",
+
+The RIGHT way to pass a boolean parameter is:
+    monitor => true,
+
+
+## FOURTH CHANGE: Other things may have changed
+
+The above points refer to usage patterns or parameters names relative to most of the modules.
+
+Besides these common elements each module, during the upgrade from 2.x to 3.x will probably have changes in other specific elements:
+
+- missing additional parameters names renamed or removed, for features managed in different ways or not (yet) upgraded
+
+- missing additional subclasses and defines which may have not been (yet) migrated
+
+- parameters adapted to stdmod naming for migrated subclasses or defines
+
+
